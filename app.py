@@ -32,13 +32,15 @@ if menu == "📊 Dashboard":
     
     if len(cand_res.data) > 0:
         df_cands = pd.DataFrame(cand_res.data)
-        col3.metric("Contratados", len(df_cands[df_cands['status_fase'].str.contains('Contratado', case=False, na=False)]))
+        # Filtro seguro para contratados
+        contratados = df_cands[df_cands['status_fase'].astype(str).str.contains('Contratado', case=False, na=False)]
+        col3.metric("Contratados", len(contratados))
         
         st.divider()
         st.subheader("Candidatos por Fase")
         st.bar_chart(df_cands['status_fase'].value_counts())
     else:
-        st.info("O banco de dados está vazio. Use a aba 'Importar Planilha' para carregar seus dados.")
+        st.info("O banco de dados está vazio. Use a aba 'Importar Planilha'.")
 
 # --- ABA: VAGAS ---
 elif menu == "💼 Gestão de Vagas":
@@ -63,47 +65,55 @@ elif menu == "👥 Candidatos por Vaga":
 
         cands_vaga = supabase.table("candidatos").select("*").eq("vaga_id", id_vaga).execute()
         if cands_vaga.data:
-            st.dataframe(pd.DataFrame(cands_vaga.data)[['nome', 'status_fase', 'contato', 'pretensao_salarial', 'observacoes']], use_container_width=True)
+            df_display = pd.DataFrame(cands_vaga.data)
+            # Colunas que queremos mostrar (se existirem)
+            cols_desejadas = ['nome', 'status_fase', 'contato', 'pretensao_salarial', 'observacoes']
+            cols_presentes = [c for c in cols_desejadas if c in df_display.columns]
+            st.dataframe(df_display[cols_presentes], use_container_width=True)
         else:
             st.info("Nenhum candidato nesta vaga.")
 
 # --- ABA: IMPORTAR ---
 elif menu == "📥 Importar Planilha":
     st.header("Importar Excel (Migração)")
-    st.write("Selecione sua planilha `.xlsx` para carregar os dados de todas as abas automaticamente.")
+    st.write("Selecione sua planilha `.xlsx` para carregar os dados.")
     
     arquivo_excel = st.file_uploader("Subir planilha RHINO", type=['xlsx'])
     
     if arquivo_excel:
         xl = pd.ExcelFile(arquivo_excel)
-        abas = xl.sheet_names
-        # Filtra apenas abas de clientes (remove a aba principal de painel)
-        abas_clientes = [a for a in abas if a != 'Painel de Vagas RHINO']
-        
-        selecionadas = st.multiselect("Selecione as abas para importar:", abas_clientes, default=abas_clientes)
+        abas_clientes = [a for a in xl.sheet_names if a != 'Painel de Vagas RHINO']
+        selecionadas = st.multiselect("Selecione as abas:", abas_clientes, default=abas_clientes)
         
         if st.button("Executar Importação"):
             barra = st.progress(0)
             for i, aba in enumerate(selecionadas):
-                # 1. Cria a Vaga baseada na Aba
-                v_res = supabase.table("vagas").insert({"cliente": aba, "titulo_vaga": f"Recrutamento {aba}"}).execute()
-                vaga_id = v_res.data[0]['id']
-                
-                # 2. Lê os candidatos daquela aba
-                df = pd.read_excel(arquivo_excel, sheet_name=aba)
-                df.columns = [str(c).strip().upper() for c in df.columns] # Padroniza colunas
-                
-                for _, row in df.iterrows():
-                    nome = str(row.get('CANDIDATO', ''))
-                    if nome and nome != 'nan' and nome != 'None':
-                        supabase.table("candidatos").insert({
-                            "vaga_id": vaga_id,
-                            "nome": nome,
-                            "status_fase": str(row.get('STATUS', 'Triagem')),
-                            "contato": str(row.get('CONTATO', '')),
-                            "pretensao_salarial": str(row.get('SALÁRIO', '')),
-                            "observacoes": f"Migrado via planilha (Aba {aba})"
-                        }).execute()
+                try:
+                    # 1. Cria a Vaga
+                    v_res = supabase.table("vagas").insert({"cliente": aba, "titulo_vaga": f"Recrutamento {aba}"}).execute()
+                    vaga_id = v_res.data[0]['id']
+                    
+                    # 2. Lê a aba
+                    df = pd.read_excel(arquivo_excel, sheet_name=aba)
+                    # Normaliza nomes de colunas: sem espaços, tudo maiúsculo, sem acentos básicos
+                    df.columns = [str(c).strip().upper().replace('Á', 'A').replace('É', 'E') for c in df.columns]
+                    
+                    for _, row in df.iterrows():
+                        nome = str(row.get('CANDIDATO', '')).strip()
+                        if nome and nome.lower() not in ['nan', 'none', '']:
+                            # Monta o objeto de inserção com nomes de colunas do BANCO
+                            obj_insert = {
+                                "vaga_id": int(vaga_id),
+                                "nome": nome,
+                                "status_fase": str(row.get('STATUS', 'Triagem')),
+                                "contato": str(row.get('CONTATO', '')),
+                                "pretensao_salarial": str(row.get('SALARIO', row.get('REMUNERACAO', ''))),
+                                "observacoes": f"Migrado via planilha (Aba {aba})"
+                            }
+                            # Tenta inserir no Supabase
+                            supabase.table("candidatos").insert(obj_insert).execute()
+                except Exception as e:
+                    st.error(f"Erro ao processar aba {aba}: {e}")
                 
                 barra.progress((i + 1) / len(selecionadas))
             
