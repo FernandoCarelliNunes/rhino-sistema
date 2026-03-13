@@ -2,9 +2,11 @@ import streamlit as st
 from supabase import create_client
 import pandas as pd
 
-page = 0
+if 'page' not in st.session_state:
+    st.session_state.page = 0
+if 'logins' not in st.session_state:
+    st.session_state.logins = {"ADM":"1234"}
 
-logins = {"ADM":"1234"}
 
 # 1. Configuração da Página
 st.set_page_config(page_title="RHINO RH - Gestão", layout="wide", page_icon="🦏")
@@ -19,19 +21,18 @@ except Exception as e:
     st.stop()
 
 def loginPage():
-    global page
     st.title("RHINO RH")
 
     login = st.text_input("Login")
     senha = st.text_input("Senha")
     if st.button("Entrar"):
         senha = senha.strip()
-        if not str(login) in logins.keys():
+        if not str(login) in st.session_state.logins.keys():
             st.error("Login inválido")
-        elif not str(senha) == logins[login]:
+        elif not str(senha) == st.session_state.logins[login]:
             st.error("Senha Inválida")
-        elif str(senha) == logins[str(login)]:
-            page = 1
+        elif str(senha) == st.session_state.logins[str(login)]:
+            st.session_state.page = 1
 
 
 def homePage():
