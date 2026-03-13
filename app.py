@@ -24,9 +24,12 @@ def loginPage():
     login = st.text_input("Login")
     senha = st.text_input("Senha")
     if st.button("Entrar"):
-        if login in logins.keys():
-            if str(senha) == logins[login]:
-                page = 1
+        if not login in logins.keys():
+            st.error("Login inválido")
+        if  not str(senha) == logins[login]:
+            st.error("Senha Inválida")
+        if str(senha) == logins[login]:
+            page = 1
 
 
 def homePage():
