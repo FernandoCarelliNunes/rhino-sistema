@@ -26,9 +26,9 @@ def loginPage():
     if st.button("Entrar"):
         if not login in logins.keys():
             st.error("Login inválido")
-        if  not str(senha) == logins[login]:
+        elif not str(senha) == logins[login]:
             st.error("Senha Inválida")
-        if str(senha) == logins[login]:
+        elif str(senha) == logins[login]:
             page = 1
 
 
