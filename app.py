@@ -21,8 +21,8 @@ except Exception as e:
     st.stop()
 
 def loginPage():
+    st.rerun()
     st.title("RHINO RH")
-
     login = st.text_input("Login")
     senha = st.text_input("Senha")
     if st.button("Entrar"):
