@@ -4,6 +4,8 @@ import pandas as pd
 
 page = 0
 
+logins = {"ADM":"1234"}
+
 # 1. Configuração da Página
 st.set_page_config(page_title="RHINO RH - Gestão", layout="wide", page_icon="🦏")
 
@@ -18,7 +20,13 @@ except Exception as e:
 
 def loginPage():
     st.title("RHINO RH")
-    pass
+
+    login = st.text_input("Login")
+    senha = st.text_input("Senha")
+    if st.button("Entrar"):
+        if login in logins.keys():
+            if str(senha) == logins[login]:
+                page = 1
 
 
 def homePage():
