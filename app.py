@@ -19,6 +19,7 @@ except Exception as e:
     st.stop()
 
 def loginPage():
+    global page
     st.title("RHINO RH")
 
     login = st.text_input("Login")
