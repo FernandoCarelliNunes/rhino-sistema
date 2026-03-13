@@ -21,7 +21,6 @@ except Exception as e:
     st.stop()
 
 def loginPage():
-    st.rerun()
     st.title("RHINO RH")
     login = st.text_input("Login")
     senha = st.text_input("Senha")
@@ -33,6 +32,7 @@ def loginPage():
             st.error("Senha Inválida")
         elif str(senha) == st.session_state.logins[str(login)]:
             st.session_state.page = 1
+            st.rerun()
 
 
 def homePage():
