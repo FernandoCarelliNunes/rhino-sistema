@@ -141,7 +141,7 @@ def homePage():
                 
                 st.success("✅ Importação finalizada! Verifique o Dashboard.")
 
-if page == 0:
+if st.session_state.page == 0:
     loginPage()
-elif page == 1:
+elif st.session_state.page == 1:
     homePage()
